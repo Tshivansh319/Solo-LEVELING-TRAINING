@@ -88,7 +88,7 @@ const initialState: AppState = {
   voiceEnabled: true,
   lastResetDate: new Date().toDateString(),
   history: {},
-  lastUpdateTimestamp: Date.now(),
+  lastUpdateTimestamp: 0,
 };
 
 export const useStore = create<AppState & StoreActions>()(

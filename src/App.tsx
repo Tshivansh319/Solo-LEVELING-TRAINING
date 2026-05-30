@@ -296,10 +296,14 @@ const App: React.FC = () => {
           const localTimestamp = store.lastUpdateTimestamp || 0;
           const remoteTimestamp = remoteData.lastUpdateTimestamp || 0;
 
-          if (remoteTimestamp > localTimestamp) {
-            console.log(`[BOOT_SYNC] Remote state is newer (${remoteTimestamp} > ${localTimestamp}). Syncing DB to local...`);
-            store.applyRemoteUpdate(remoteData);
-            lastPushedTimestamp.current = remoteTimestamp;
+          if (remoteTimestamp > localTimestamp || localTimestamp === 0) {
+            console.log(`[BOOT_SYNC] Applying remote state (Remote: ${remoteTimestamp}, Local: ${localTimestamp})`);
+            if (localTimestamp === 0) {
+              useStore.setState({ ...remoteData });
+            } else {
+              store.applyRemoteUpdate(remoteData);
+            }
+            lastPushedTimestamp.current = remoteTimestamp || 1;
           } else if (remoteTimestamp < localTimestamp) {
             console.log(`[BOOT_SYNC] Local state is newer (${localTimestamp} > ${remoteTimestamp}). Preparing push...`);
             // We set lastPushedTimestamp to remote so that the push effect knows there's pending push
@@ -440,7 +444,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     
-    if (isAuthenticated) {
+    if (isAuthenticated && (!isOnline || bootSyncDone)) {
       store.checkDailyReset();
     }
 
@@ -462,11 +466,11 @@ const App: React.FC = () => {
       window.removeEventListener('level-up', onLevelUp);
       window.removeEventListener('coding-level-up', onCodingLevelUp);
     };
-  }, [announceLevelUp, store.checkDailyReset, isAuthenticated]);
+  }, [announceLevelUp, store.checkDailyReset, isAuthenticated, isOnline, bootSyncDone]);
 
   // Fueling active titles and obtained inventory with level requirements validations
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && (!isOnline || bootSyncDone)) {
       const currentTitles = store.obtainedTitles || [];
       
       // Filter out any default preloaded titles if progress requirement is not met
@@ -509,7 +513,7 @@ const App: React.FC = () => {
         store.setActiveTitle(`${active} Monarch`);
       }
     }
-  }, [isAuthenticated, store.activeTitle, store.obtainedTitles, store.codingLevel]);
+  }, [isAuthenticated, store.activeTitle, store.obtainedTitles, store.codingLevel, isOnline, bootSyncDone]);
 
   if (!isOnline) {
     return <OfflinePage />;
@@ -517,6 +521,57 @@ const App: React.FC = () => {
 
   if (!isAuthenticated) {
     return <Login />;
+  }
+
+  if (isOnline && !bootSyncDone) {
+    return (
+      <div id="boot-overlay" className="min-h-screen w-full bg-zinc-950 flex flex-col items-center justify-center relative p-6 antialiased">
+        {/* Abstract Background Tech Details */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(8,145,178,0.06)_0%,rgba(9,9,11,0.95)_80%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(6,182,212,0.015)_1px,transparent_1px),linear-gradient(to_bottom,rgba(6,182,212,0.015)_1px,transparent_1px)] bg-[size:32px_32px]" />
+        
+        <div className="z-10 text-center max-w-sm flex flex-col items-center">
+          {/* Glowing Central Logo / Icon */}
+          <div className="relative mb-6 w-20 h-20 flex items-center justify-center animate-pulse">
+            <div className="absolute inset-0 bg-cyan-500/10 rounded-full blur-xl" />
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" className="w-[72px] h-[72px] drop-shadow-[0_0_12px_rgba(34,211,238,0.5)] text-cyan-400">
+              <path d="M256 120 L315 230 L410 190 L345 285 L395 390 L256 340 L117 390 L167 285 L102 190 L197 230 Z" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="20" 
+                    strokeLinejoin="round"/>
+              <circle cx="256" cy="265" r="28" fill="currentColor"/>
+            </svg>
+          </div>
+
+          <h2 className="text-[12px] font-black tracking-[0.25em] uppercase text-cyan-400 mb-1.5 font-mono flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span>
+            NEURAL_LINK_STABILIZING
+          </h2>
+          
+          <p className="text-[9px] text-zinc-500 tracking-[0.2em] uppercase font-mono mb-6">
+            Synchronizing Shadow Monarch System
+          </p>
+
+          {/* Glowing loaders */}
+          <div className="w-full h-[4px] bg-zinc-900 border border-cyan-950 rounded-full overflow-hidden relative">
+            <div className="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full animate-[loading_2s_ease-in-out_infinite]" />
+          </div>
+
+          <span className="text-[7.5px] text-zinc-600 font-mono tracking-widest uppercase mt-4">
+            Securing write-back state ... 
+          </span>
+        </div>
+        
+        <style>{`
+          @keyframes loading {
+            0% { transform: translateX(-100%); width: 25%; }
+            50% { width: 50%; }
+            100% { transform: translateX(300%); width: 25%; }
+          }
+        `}</style>
+      </div>
+    );
   }
 
   const requiredXP = calculateRequiredXP(store.level);
