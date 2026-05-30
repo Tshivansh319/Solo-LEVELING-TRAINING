@@ -1,0 +1,8 @@
+{
+  "name": "Solo Leveling System",
+  "description": "Solo Leveling Productivity System with Tactical HUD, gamified XP, custom quests, and neural link sync.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

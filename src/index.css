@@ -1,0 +1,268 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Rajdhani', sans-serif;
+  --font-orbitron: 'Orbitron', sans-serif;
+}
+
+:root {
+  --neon-blue: #06b6d4;
+  --neon-blue-glow: rgba(6, 182, 212, 0.7);
+  --neon-blue-glow-strong: rgba(6, 182, 212, 1);
+  --neon-amber: #f59e0b;
+  --neon-amber-glow: rgba(245, 158, 11, 0.4);
+  --neon-red: #ef4444;
+  --neon-red-glow: rgba(239, 68, 68, 0.4);
+}
+
+body {
+  font-family: 'Rajdhani', sans-serif;
+  background-color: #010409;
+  color: #e2e8f0;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  position: fixed;
+  margin: 0;
+  padding: 0;
+}
+
+.font-orbitron { font-family: 'Orbitron', sans-serif; }
+
+.bg-hud-animated {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: #010409;
+  overflow: hidden;
+}
+
+.grid-layer {
+  position: absolute;
+  inset: -100px;
+  background-image: 
+    linear-gradient(to right, rgba(6, 182, 212, 0.08) 1.5px, transparent 1.5px),
+    linear-gradient(to bottom, rgba(6, 182, 212, 0.08) 1.5px, transparent 1.5px);
+  background-size: 60px 60px;
+  animation: grid-drift 60s linear infinite;
+}
+
+.grid-dots {
+  position: absolute;
+  inset: -100px;
+  background-image: radial-gradient(circle, rgba(6, 182, 212, 0.3) 1.5px, transparent 1.5px);
+  background-size: 60px 60px;
+  animation: grid-drift 60s linear infinite, dots-pulse 4s ease-in-out infinite;
+}
+
+@keyframes grid-drift {
+  from { transform: translateX(0) translateY(0); }
+  to { transform: translateX(60px) translateY(60px); }
+}
+
+@keyframes dots-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.9; }
+}
+
+.particles {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.particle {
+  position: absolute;
+  background: var(--neon-blue);
+  border-radius: 50%;
+  opacity: 0.15;
+  filter: blur(1.5px);
+  animation: float-particle var(--d) linear infinite;
+  top: var(--y);
+  left: var(--x);
+  width: var(--s);
+  height: var(--s);
+}
+
+@keyframes float-particle {
+  from { transform: translateY(0); opacity: 0; }
+  10% { opacity: 0.3; }
+  90% { opacity: 0.3; }
+  to { transform: translateY(-100vh); opacity: 0; }
+}
+
+@keyframes border-pulse {
+  0%, 100% { border-color: rgba(6, 182, 212, 0.6); box-shadow: 0 0 30px rgba(6, 182, 212, 0.4); }
+  50% { border-color: rgba(6, 182, 212, 1); box-shadow: 0 0 50px rgba(6, 182, 212, 0.6); }
+}
+
+.main-frame {
+  background: rgba(13, 17, 23, 0.4);
+  backdrop-filter: blur(12px);
+  border: 3px solid var(--neon-blue);
+  box-shadow: 
+    0 0 50px var(--neon-blue-glow), 
+    inset 0 0 30px var(--neon-blue-glow);
+  position: relative;
+  max-height: 86vh;
+  width: 98%;
+  max-width: 1400px;
+  display: flex;
+  flex-direction: column;
+  animation: border-pulse 8s ease-in-out infinite;
+}
+
+.system-panel {
+  background: rgba(13, 17, 23, 0.6);
+  backdrop-filter: blur(8px);
+  border: 2px solid rgba(6, 182, 212, 0.5);
+  position: relative;
+}
+
+.checkbox-hud {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--neon-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  cursor: pointer;
+  background: rgba(6, 182, 212, 0.1);
+  position: relative;
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.3), inset 0 0 8px var(--neon-blue-glow);
+}
+
+@media (min-width: 640px) {
+  .checkbox-hud {
+    width: 28px;
+    height: 28px;
+    border-width: 3px;
+  }
+}
+
+.checkbox-hud.checked {
+  border-color: #fff;
+  background: var(--neon-blue);
+  box-shadow: 
+    0 0 30px var(--neon-blue-glow-strong),
+    0 0 15px #fff,
+    inset 0 0 15px rgba(255,255,255,0.5);
+  transform: scale(1.15);
+}
+
+.checkbox-hud.checked::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border: 2px solid var(--neon-blue);
+  opacity: 0;
+  animation: checkbox-pulse 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes checkbox-pulse {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+.neon-text {
+  text-shadow: 0 0 20px var(--neon-blue-glow-strong);
+}
+
+.neon-strip {
+  height: 2px;
+  background: var(--neon-blue);
+  box-shadow: 0 0 15px var(--neon-blue-glow-strong), 0 0 5px #fff;
+  width: 100%;
+}
+
+.yes-button-active {
+  background: var(--neon-blue) !important;
+  border-color: #fff !important;
+  box-shadow: 0 0 35px var(--neon-blue-glow-strong);
+  color: #000 !important;
+}
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+.scanline {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 150px;
+  background: linear-gradient(to bottom, transparent, rgba(6, 182, 212, 0.1), transparent);
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 100;
+  animation: scanline 6s linear infinite;
+}
+
+* { 
+  scrollbar-width: none; 
+  -ms-overflow-style: none; 
+  box-sizing: border-box;
+}
+::-webkit-scrollbar { display: none; }
+
+.quest-row {
+  height: 28px;
+  min-height: 28px;
+  padding: 0 8px;
+  border-radius: 4px;
+  background: rgba(6, 182, 212, 0.05);
+  transition: all 0.2s ease;
+  border: 1px solid rgba(6, 182, 212, 0.1);
+}
+
+@media (min-width: 640px) {
+  .quest-row {
+    height: 34px;
+    min-height: 34px;
+    padding: 0 12px;
+  }
+}
+
+.quest-row:hover {
+  background: rgba(6, 182, 212, 0.15);
+  border-color: rgba(6, 182, 212, 0.5);
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.2), inset 0 0 15px rgba(6, 182, 212, 0.1);
+}
+
+.truncate-hud {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.08em;
+}
+
+@keyframes shimmer {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+.bar-shimmer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  animation: shimmer 2.5s infinite linear;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,0,60,0.2);
+  border-top-color: #ff003c;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}

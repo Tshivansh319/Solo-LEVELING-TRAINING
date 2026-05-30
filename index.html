@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#020617" />
+    <title>Solo Leveling System | Tactical HUD</title>
+  </head>
+  <body class="select-none overflow-hidden">
+    <!-- Immersive Animated HUD Background Layer -->
+    <div class="bg-hud-animated">
+      <div class="grid-layer"></div>
+      <div class="grid-dots"></div>
+      <div class="particles" id="particle-container"></div>
+    </div>
+    <div class="scanline"></div>
+
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+
+    <!-- Floating HUD Glow Particles Script -->
+    <script>
+      const container = document.getElementById('particle-container');
+      if (container) {
+        for (let i = 0; i < 40; i++) {
+          const p = document.createElement('div');
+          p.className = 'particle';
+          const s = Math.random() * 4 + 1;
+          p.style.setProperty('--x', Math.random() * 100 + 'vw');
+          p.style.setProperty('--y', Math.random() * 100 + 'vh');
+          p.style.setProperty('--s', s + 'px');
+          p.style.setProperty('--d', (Math.random() * 15 + 10) + 's');
+          container.appendChild(p);
+        }
+      }
+    </script>
+  </body>
+</html>
