@@ -407,23 +407,73 @@ const App: React.FC = () => {
     store.lastUpdateTimestamp
   ]);
 
-  // SUBSCRIBE to remote changes from Supabase Realtime
+  // SUBSCRIBE to remote changes from Supabase Realtime + Bulletproof Polling Backup for perfect live sync
   useEffect(() => {
-    if (!isAuthenticated || !userCode || !isOnline) return;
+    if (!isAuthenticated || !userCode || !isOnline || !bootSyncDone) return;
     
+    console.log(`[SYNCHRONIZER] Activating real-time subscriber and background monitor for: ${userCode}`);
     const unsubscribe = supabaseService.subscribeToChanges(userCode, (remoteData) => {
-      // When applying remote update, our store logic will check the timestamp
-      store.applyRemoteUpdate(remoteData);
+      if (!remoteData) return;
+      const remoteTimestamp = remoteData.lastUpdateTimestamp || 0;
+      const localTimestamp = useStore.getState().lastUpdateTimestamp || 0;
       
-      // If the remote update was accepted, update our 'lastPushed' to match
-      // so we don't immediately push it back to the server
-      if (remoteData.lastUpdateTimestamp > lastPushedTimestamp.current) {
-        lastPushedTimestamp.current = remoteData.lastUpdateTimestamp;
+      if (remoteTimestamp > localTimestamp) {
+        console.log(`[REALTIME_SYNC] Incoming update is newer (${remoteTimestamp} > ${localTimestamp}). Merging states...`);
+        store.applyRemoteUpdate(remoteData);
+        lastPushedTimestamp.current = remoteTimestamp;
       }
     });
+
+    // Fallback/Poller to bypass any Supabase subscription network drops or delayed updates
+    const pollInterval = setInterval(async () => {
+      // Only pull if page/tab is currently active/visible to save resources, otherwise wait
+      if (document.hidden) return;
+
+      try {
+        const remoteData = await supabaseService.fetchState(userCode);
+        if (remoteData) {
+          const remoteTimestamp = remoteData.lastUpdateTimestamp || 0;
+          const localTimestamp = useStore.getState().lastUpdateTimestamp || 0;
+
+          if (remoteTimestamp > localTimestamp) {
+            console.log(`[POLLING_SYNC] Pulling newer remote state (${remoteTimestamp} > ${localTimestamp}). Merging...`);
+            store.applyRemoteUpdate(remoteData);
+            lastPushedTimestamp.current = remoteTimestamp;
+          }
+        }
+      } catch (err) {
+        console.warn("[POLLING_SYNC] Failed to fetch remote backup state:", err);
+      }
+    }, 4000); // 4 seconds is highly responsive and safe for fast cross-device updates
+
+    // Force instant update on tab focus/visibility activation (sync instantaneously when switching devices)
+    const handleVisibilityChange = async () => {
+      if (!document.hidden) {
+        try {
+          const remoteData = await supabaseService.fetchState(userCode);
+          if (remoteData) {
+            const remoteTimestamp = remoteData.lastUpdateTimestamp || 0;
+            const localTimestamp = useStore.getState().lastUpdateTimestamp || 0;
+
+            if (remoteTimestamp > localTimestamp) {
+              console.log("[FOCUS_SYNC] Tab focused. Remote state is newer. Syncing newer data...");
+              store.applyRemoteUpdate(remoteData);
+              lastPushedTimestamp.current = remoteTimestamp;
+            }
+          }
+        } catch (err) {
+          console.warn("[FOCUS_SYNC] Sync on focus failed:", err);
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     
-    return () => unsubscribe();
-  }, [isAuthenticated, userCode, isOnline, store.applyRemoteUpdate]);
+    return () => {
+      unsubscribe();
+      clearInterval(pollInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isAuthenticated, userCode, isOnline, bootSyncDone, store.applyRemoteUpdate]);
 
   const announceLevelUp = useCallback(() => {
     if (!store.voiceEnabled) return;
