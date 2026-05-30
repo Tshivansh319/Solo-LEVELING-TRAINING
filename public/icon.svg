@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Glowing HUD Border -->
+  <rect width="512" height="512" rx="128" fill="#020617" stroke="#06b6d4" stroke-width="8"/>
+  
+  <!-- Outer Tech Grid Motif -->
+  <circle cx="256" cy="256" r="220" fill="none" stroke="#083344" stroke-width="4" stroke-dasharray="10 15"/>
+  <circle cx="256" cy="256" r="180" fill="none" stroke="#0e7490" stroke-width="2" stroke-opacity="0.3"/>
+  
+  <!-- Shadow Monarch Crown / Blade Symbol -->
+  <g transform="translate(0, 10)">
+    <path d="M256 120 L315 230 L410 190 L345 285 L395 390 L256 340 L117 390 L167 285 L102 190 L197 230 Z" 
+          fill="#020617" 
+          stroke="#22d3ee" 
+          stroke-width="16" 
+          stroke-linejoin="round" 
+          filter="drop-shadow(0 0 12px rgba(34, 211, 238, 0.8))"/>
+          
+    <!-- Core Neural Node -->
+    <circle cx="256" cy="265" r="24" fill="#22d3ee" filter="drop-shadow(0 0 10px #06b6d4)"/>
+    <circle cx="256" cy="265" r="10" fill="#ffffff"/>
+    
+    <!-- Under Dagger Accents -->
+    <path d="M256 340 L256 410" stroke="#22d3ee" stroke-width="12" stroke-linecap="round" filter="drop-shadow(0 0 8px #22d3ee)"/>
+    <path d="M220 370 L292 370" stroke="#06b6d4" stroke-width="6" stroke-linecap="round"/>
+  </g>
+</svg>

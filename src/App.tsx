@@ -14,7 +14,9 @@ import {
   TrendingUp,
   CloudLightning,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  Download,
+  Smartphone
 } from 'lucide-react';
 import { useStore, calculateRequiredXP, calculateRank } from './store.ts';
 import { 
@@ -80,6 +82,13 @@ const App: React.FC = () => {
   const [milestoneInput, setMilestoneInput] = useState('');
   const [showSqlFix, setShowSqlFix] = useState(false);
   const [sqlCopied, setSqlCopied] = useState(false);
+
+  // PWA states
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+  const [isPwaInstalled, setIsPwaInstalled] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  const [showIosTip, setShowIosTip] = useState(false);
 
   // Card 1: Quest Generator
   const [loading1, setLoading1] = useState(false);
@@ -213,7 +222,7 @@ const App: React.FC = () => {
     callGroq(system, userMsg, setLoading4, setResponse4, setError4);
   };
 
-  // Connection monitoring
+  // Connection monitoring and PWA install prompt listeners
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
@@ -221,11 +230,57 @@ const App: React.FC = () => {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
+    // Capture standard install prompt
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+
+    // Track when successful install happens
+    const handleAppInstalled = () => {
+      setIsPwaInstalled(true);
+      setIsInstallable(false);
+      setDeferredPrompt(null);
+    };
+
+    // iOS and installation detection on boot
+    const ua = window.navigator.userAgent.toLowerCase();
+    const isApple = /iphone|ipad|ipod/.test(ua);
+    setIsIOS(isApple);
+
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+    setIsPwaInstalled(isStandalone);
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    
+    // Trigger standard install prompt
+    deferredPrompt.prompt();
+    
+    // Check results
+    try {
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`User installation prompt choice: ${outcome}`);
+    } catch (err) {
+      console.error("Installation error: ", err);
+    }
+    
+    // Reset parameters
+    setDeferredPrompt(null);
+    setIsInstallable(false);
+  };
 
   // PUSH local changes to Supabase (Snappy Debounced Sync on every step)
   useEffect(() => {
@@ -1003,6 +1058,59 @@ CREATE POLICY "Allow public update"
               <MenuButton icon={<Clock size={20} />} label="Temporary Quests" onClick={() => { setShowTemporaryHistory(true); setShowMenu(false); }} />
               <MenuButton icon={<Target size={20} />} label="Manage Streak" onClick={() => { setShowManageStreak(true); setShowMenu(false); }} />
               <MenuButton icon={<RotateCcw size={20} />} label="Reset Day" onClick={() => { setShowResetConfirm(true); setShowMenu(false); }} />
+              
+              {/* SYSTEM PWA INSTALLATION HUBS */}
+              <div className="h-[1px] w-full bg-zinc-800 my-4" />
+              
+              {isPwaInstalled ? (
+                <div className="mx-2 px-4 py-3 rounded border border-cyan-500/30 bg-cyan-950/10 shadow-[0_0_15px_rgba(6,182,212,0.1)] text-center antialiased">
+                  <div className="text-[7px] font-black text-cyan-400 tracking-[0.2em] uppercase mb-1">SYSTEM_STATUS_HUD</div>
+                  <div className="text-[11px] font-bold text-white tracking-widest uppercase flex items-center justify-center gap-1.5">
+                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping"></span>
+                    <span>AWAKENED HUD LIVE</span>
+                  </div>
+                </div>
+              ) : isInstallable ? (
+                <button 
+                  onClick={handleInstallClick} 
+                  className="w-full flex items-center gap-6 p-4 rounded-lg bg-cyan-950/25 hover:bg-cyan-500/20 group transition-all duration-300 border border-cyan-500/40 hover:border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.15)] animate-pulse cursor-pointer"
+                >
+                  <div className="text-cyan-400 group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(6,182,212,0.8)] transition-all">
+                    <Download size={20} />
+                  </div>
+                  <span className="text-cyan-400 group-hover:text-white font-black tracking-[0.05em] text-[15px] transition-all">INSTALL SYSTEM HUD</span>
+                </button>
+              ) : isIOS ? (
+                <div>
+                  <button 
+                    onClick={() => setShowIosTip(!showIosTip)} 
+                    className="w-full flex items-center gap-6 p-4 rounded-lg hover:bg-cyan-500/10 group transition-all duration-200 border border-transparent hover:border-cyan-500/20 cursor-pointer"
+                  >
+                    <div className="text-cyan-400 group-hover:scale-110 transition-all">
+                      <Smartphone size={20} />
+                    </div>
+                    <span className="text-zinc-300 group-hover:text-white font-bold tracking-[0.05em] text-[15px] transition-all">Install on iOS</span>
+                  </button>
+                  {showIosTip && (
+                    <div className="mx-2 mt-1 p-3 rounded bg-zinc-950/80 border border-cyan-950/60 text-[9px] text-zinc-400 uppercase tracking-wider leading-relaxed text-center font-bold">
+                      Tap <span className="text-cyan-400 font-bold">Share ⎋</span> down in browser, then select <span className="text-cyan-400 font-bold">"Add to Home Screen"</span> to awaken!
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <button 
+                  onClick={() => {
+                    alert("System Installation:\nClick the install icon (🖥️ / 📱) in your browser's address bar or settings menu to install the Solo Leveling Tactical HUD!");
+                  }} 
+                  className="w-full flex items-center gap-6 p-4 rounded-lg hover:bg-cyan-500/10 group transition-all duration-200 border border-transparent hover:border-cyan-500/20 cursor-pointer"
+                >
+                  <div className="text-cyan-400/60 group-hover:scale-110 transition-all">
+                     <Download size={20} />
+                  </div>
+                  <span className="text-zinc-400 group-hover:text-white font-bold tracking-[0.05em] text-[15px] transition-all">Install System App</span>
+                </button>
+              )}
+              
               <div className="h-[1px] w-full bg-zinc-800 my-4" />
               <MenuButton icon={<LogOut size={20} />} label="Logout" onClick={() => { store.logout(); setShowMenu(false); }} />
            </div>
