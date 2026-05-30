@@ -60,6 +60,7 @@ const App: React.FC = () => {
   const [newQuestTitle, setNewQuestTitle] = useState('');
   const [showMenu, setShowMenu] = useState(false);
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'error' | 'table_missing'>('idle');
+  const [bootSyncDone, setBootSyncDone] = useState(false);
   
   // Track the last timestamp we pushed to avoid infinite loops or stale updates
   const lastPushedTimestamp = useRef<number>(0);
@@ -282,9 +283,60 @@ const App: React.FC = () => {
     setIsInstallable(false);
   };
 
-  // PUSH local changes to Supabase (Snappy Debounced Sync on every step)
+  // 1. BOOT-UP RECONCILIATION: Fetch latest remote data on startup BEFORE allowing any write-backs
   useEffect(() => {
     if (!isAuthenticated || !userCode || !isOnline) return;
+
+    let isActive = true;
+    const loadAndReconcile = async () => {
+      setSyncStatus('syncing');
+      try {
+        const remoteData = await supabaseService.fetchState(userCode);
+        if (remoteData && isActive) {
+          const localTimestamp = store.lastUpdateTimestamp || 0;
+          const remoteTimestamp = remoteData.lastUpdateTimestamp || 0;
+
+          if (remoteTimestamp > localTimestamp) {
+            console.log(`[BOOT_SYNC] Remote state is newer (${remoteTimestamp} > ${localTimestamp}). Syncing DB to local...`);
+            store.applyRemoteUpdate(remoteData);
+            lastPushedTimestamp.current = remoteTimestamp;
+          } else if (remoteTimestamp < localTimestamp) {
+            console.log(`[BOOT_SYNC] Local state is newer (${localTimestamp} > ${remoteTimestamp}). Preparing push...`);
+            // We set lastPushedTimestamp to remote so that the push effect knows there's pending push
+            lastPushedTimestamp.current = remoteTimestamp;
+          } else {
+            console.log(`[BOOT_SYNC] Logged in & perfectly in-sync with DB.`);
+            lastPushedTimestamp.current = localTimestamp;
+          }
+        } else if (isActive) {
+          console.log(`[BOOT_SYNC] No remote state found or first-time sync. Initializing remote with current state.`);
+          // Create dummy past timestamp to force initial push
+          lastPushedTimestamp.current = 0;
+        }
+        if (isActive) {
+          setBootSyncDone(true);
+          setSyncStatus('idle');
+        }
+      } catch (err) {
+        console.error("Boot-up reconciliation error:", err);
+        if (isActive) {
+          // Fallback to allow continuing using local state
+          setBootSyncDone(true);
+          setSyncStatus('error');
+        }
+      }
+    };
+
+    loadAndReconcile();
+
+    return () => {
+      isActive = false;
+    };
+  }, [isAuthenticated, userCode, isOnline]);
+
+  // 2. PUSH local changes to Supabase (Snappy Debounced Sync - BLOCKED until boot-up reconciliation completes)
+  useEffect(() => {
+    if (!isAuthenticated || !userCode || !isOnline || !bootSyncDone) return;
     
     // Only push if the local timestamp is actually NEWER than what we last pushed
     if (store.lastUpdateTimestamp <= lastPushedTimestamp.current) return;
@@ -327,13 +379,14 @@ const App: React.FC = () => {
         lastPushedTimestamp.current = store.lastUpdateTimestamp;
         setTimeout(() => setSyncStatus('idle'), 1000);
       }
-    }, 300); // Super fast 300ms sync for seamless cross-device steps!
+    }, 450); // Generous debounce of 450ms for reliable, non-flickering syncs!
 
     return () => clearTimeout(timer);
   }, [
     isAuthenticated, 
     userCode, 
     isOnline,
+    bootSyncDone,
     store.permanentQuests, 
     store.temporaryQuests, 
     store.xp, 
@@ -595,7 +648,10 @@ CREATE POLICY "Allow public insert"
   ON public.user_states FOR INSERT WITH CHECK (true);
 
 CREATE POLICY "Allow public update" 
-  ON public.user_states FOR UPDATE USING (true) WITH CHECK (true);`}
+  ON public.user_states FOR UPDATE USING (true) WITH CHECK (true);
+
+-- Enable Realtime for perfect live sync between devices!
+ALTER PUBLICATION supabase_realtime ADD TABLE public.user_states;`}
                   </pre>
                   <button 
                     onClick={() => {
@@ -614,7 +670,10 @@ CREATE POLICY "Allow public insert"
   ON public.user_states FOR INSERT WITH CHECK (true);
 
 CREATE POLICY "Allow public update" 
-  ON public.user_states FOR UPDATE USING (true) WITH CHECK (true);`);
+  ON public.user_states FOR UPDATE USING (true) WITH CHECK (true);
+
+-- Enable Realtime for perfect live sync between devices!
+ALTER PUBLICATION supabase_realtime ADD TABLE public.user_states;`);
                       setSqlCopied(true);
                       setTimeout(() => setSqlCopied(false), 2000);
                     }}
@@ -1112,7 +1171,7 @@ CREATE POLICY "Allow public update"
               )}
               
               <div className="h-[1px] w-full bg-zinc-800 my-4" />
-              <MenuButton icon={<LogOut size={20} />} label="Logout" onClick={() => { store.logout(); setShowMenu(false); }} />
+              <MenuButton icon={<LogOut size={20} />} label="Logout" onClick={() => { store.logout(); setBootSyncDone(false); setShowMenu(false); }} />
            </div>
            <div className="p-8 border-t border-zinc-900 bg-zinc-950/50">
              <div className="flex items-center justify-between">
